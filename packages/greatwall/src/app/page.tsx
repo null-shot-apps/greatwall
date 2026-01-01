@@ -158,29 +158,68 @@ export default function GTAGame() {
         </div>
       )}
 
-      {/* Game world */}
-      <div className="relative w-full h-full bg-gradient-to-br from-gray-700 via-gray-600 to-gray-700">
+      {/* Game world - Isometric 3D View */}
+      <div 
+        className="relative w-full h-full bg-gradient-to-br from-gray-700 via-gray-600 to-gray-700"
+        style={{
+          transform: 'rotateX(60deg) rotateZ(45deg)',
+          transformStyle: 'preserve-3d',
+          perspective: '1000px',
+        }}
+      >
         {/* City grid */}
         <div className="absolute inset-0" style={{
           backgroundImage: 'linear-gradient(rgba(0,0,0,0.3) 2px, transparent 2px), linear-gradient(90deg, rgba(0,0,0,0.3) 2px, transparent 2px)',
           backgroundSize: '100px 100px'
         }} />
 
-        {/* Buildings */}
-        {[...Array(15)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute bg-gray-800 border-2 border-gray-900"
-            style={{
-              left: `${(i % 5) * 160 + 50}px`,
-              top: `${Math.floor(i / 5) * 180 + 50}px`,
-              width: '80px',
-              height: '100px',
-            }}
-          />
-        ))}
+        {/* Buildings - 3D blocks */}
+        {[...Array(15)].map((_, i) => {
+          const height = 60 + Math.random() * 80;
+          return (
+            <div
+              key={i}
+              className="absolute"
+              style={{
+                left: `${(i % 5) * 160 + 50}px`,
+                top: `${Math.floor(i / 5) * 180 + 50}px`,
+                transformStyle: 'preserve-3d',
+              }}
+            >
+              {/* Building front face */}
+              <div
+                className="absolute bg-gray-800 border-2 border-gray-900"
+                style={{
+                  width: '80px',
+                  height: `${height}px`,
+                  transform: `translateZ(40px)`,
+                }}
+              />
+              {/* Building top face */}
+              <div
+                className="absolute bg-gray-700 border-2 border-gray-800"
+                style={{
+                  width: '80px',
+                  height: '80px',
+                  transform: `translateY(-${height}px) rotateX(90deg)`,
+                  transformOrigin: 'top',
+                }}
+              />
+              {/* Building side face */}
+              <div
+                className="absolute bg-gray-900 border-2 border-black"
+                style={{
+                  width: '80px',
+                  height: `${height}px`,
+                  transform: `translateX(80px) rotateY(90deg)`,
+                  transformOrigin: 'left',
+                }}
+              />
+            </div>
+          );
+        })}
 
-        {/* Mission markers */}
+        {/* Mission markers - 3D */}
         {missions.map(mission => (
           <div
             key={mission.id}
@@ -188,25 +227,49 @@ export default function GTAGame() {
             style={{
               left: `${mission.x - 20}px`,
               top: `${mission.y - 40}px`,
+              transformStyle: 'preserve-3d',
+              transform: 'translateZ(50px)',
             }}
           >
             <div className="text-4xl animate-bounce">📍</div>
-            <div className="text-xs text-yellow-500 font-bold text-center whitespace-nowrap">
+            <div className="text-xs text-yellow-500 font-bold text-center whitespace-nowrap bg-black/70 px-2 py-1 rounded">
               {mission.name}
             </div>
           </div>
         ))}
 
-        {/* Player car */}
+        {/* Player car - 3D */}
         <div
-          className="absolute transition-transform"
+          className="absolute"
           style={{
             left: `${player.x - 15}px`,
             top: `${player.y - 20}px`,
-            transform: `rotate(${player.rotation}deg)`,
+            transformStyle: 'preserve-3d',
           }}
         >
-          <div className="text-4xl">🚗</div>
+          {/* Car body */}
+          <div
+            style={{
+              transform: `rotate(${player.rotation}deg) translateZ(10px)`,
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            <div className="relative">
+              {/* Car top */}
+              <div className="absolute w-8 h-12 bg-blue-600 border-2 border-blue-800 rounded-sm" 
+                style={{ transform: 'translateZ(8px)' }} 
+              />
+              {/* Car bottom */}
+              <div className="absolute w-8 h-12 bg-blue-800 border-2 border-blue-900 rounded-sm" />
+              {/* Car side */}
+              <div className="absolute w-8 h-2 bg-blue-900 border border-black" 
+                style={{ 
+                  transform: 'translateY(12px) rotateX(90deg)',
+                  transformOrigin: 'top'
+                }} 
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -225,5 +288,6 @@ export default function GTAGame() {
     </div>
   );
 }
+
 
 
