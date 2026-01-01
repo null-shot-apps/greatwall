@@ -1,155 +1,229 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-const missions = [
-  { id: 1, name: 'Street Race', reward: '$5,000', difficulty: 'Easy', status: 'available' },
-  { id: 2, name: 'Bank Heist', reward: '$50,000', difficulty: 'Hard', status: 'locked' },
-  { id: 3, name: 'Drug Deal', reward: '$15,000', difficulty: 'Medium', status: 'available' },
-  { id: 4, name: 'Assassination', reward: '$25,000', difficulty: 'Hard', status: 'locked' },
-  { id: 5, name: 'Car Theft', reward: '$8,000', difficulty: 'Easy', status: 'available' },
-];
+export default function GTAGame() {
+  const [player, setPlayer] = useState({ x: 400, y: 300, rotation: 0, speed: 0 });
+  const [keys, setKeys] = useState<Record<string, boolean>>({});
+  const [cash, setCash] = useState(0);
+  const [health, setHealth] = useState(100);
+  const [wanted, setWanted] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
+  
+  const [missions] = useState([
+    { id: 1, x: 200, y: 150, name: 'Street Race', reward: 5000, active: false },
+    { id: 2, x: 600, y: 400, name: 'Package Pickup', reward: 2500, active: false },
+    { id: 3, x: 300, y: 500, name: 'Car Theft', reward: 8000, active: false },
+  ]);
 
-export default function MissionTracker() {
-  const [selectedMission, setSelectedMission] = useState(missions[0]);
-  const [stats] = useState({
-    cash: 12500,
-    respect: 45,
-    wanted: 2,
-    health: 85,
-  });
+  const [activeMission, setActiveMission] = useState<number | null>(null);
 
-  return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-black text-white">
-      {/* Dark city background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-purple-900/30" />
-      
-      {/* Grid overlay */}
-      <div className="absolute inset-0 opacity-10" style={{
-        backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-        backgroundSize: '50px 50px'
-      }} />
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      setKeys(prev => ({ ...prev, [e.key.toLowerCase()]: true }));
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      setKeys(prev => ({ ...prev, [e.key.toLowerCase()]: false }));
+    };
 
-      {/* Main HUD Container */}
-      <div className="relative z-10 h-full p-4 md:p-6 flex flex-col gap-4">
-        
-        {/* Top Stats Bar */}
-        <div className="flex flex-wrap gap-4 justify-between items-center bg-black/60 backdrop-blur-sm border border-yellow-500/30 p-4 rounded">
-          <div className="flex gap-6">
-            <div>
-              <div className="text-yellow-500 text-xs uppercase tracking-wider">Cash</div>
-              <div className="text-2xl font-bold text-green-400">${stats.cash.toLocaleString()}</div>
-            </div>
-            <div>
-              <div className="text-yellow-500 text-xs uppercase tracking-wider">Respect</div>
-              <div className="text-2xl font-bold">{stats.respect}%</div>
-            </div>
-            <div>
-              <div className="text-yellow-500 text-xs uppercase tracking-wider">Wanted</div>
-              <div className="text-2xl font-bold text-red-500">{'★'.repeat(stats.wanted)}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="text-yellow-500 text-xs uppercase tracking-wider">Health</div>
-            <div className="w-32 h-4 bg-gray-800 border border-yellow-500/30 rounded overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all"
-                style={{ width: `${stats.health}%` }}
-              />
-            </div>
-            <div className="text-sm font-bold">{stats.health}%</div>
-          </div>
-        </div>
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
-        {/* Main Content Grid */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
-          
-          {/* Mission List */}
-          <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded p-4 overflow-y-auto">
-            <h2 className="text-yellow-500 text-xl font-bold mb-4 uppercase tracking-wider">Available Missions</h2>
-            <div className="space-y-2">
-              {missions.map((mission) => (
-                <button
-                  key={mission.id}
-                  onClick={() => mission.status === 'available' && setSelectedMission(mission)}
-                  disabled={mission.status === 'locked'}
-                  className={`w-full text-left p-3 rounded border transition-all ${
-                    selectedMission.id === mission.id
-                      ? 'bg-yellow-500/20 border-yellow-500'
-                      : mission.status === 'locked'
-                      ? 'bg-gray-800/50 border-gray-700 opacity-50 cursor-not-allowed'
-                      : 'bg-gray-900/50 border-gray-700 hover:border-yellow-500/50'
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="font-bold">{mission.name}</div>
-                      <div className="text-sm text-gray-400">{mission.difficulty}</div>
-                    </div>
-                    <div className="text-green-400 font-bold">{mission.reward}</div>
-                  </div>
-                  {mission.status === 'locked' && (
-                    <div className="text-xs text-red-400 mt-1">🔒 LOCKED</div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
+  // Game loop
+  useEffect(() => {
+    if (!gameStarted) return;
 
-          {/* Map Area */}
-          <div className="lg:col-span-2 bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded p-4 flex flex-col">
-            <h2 className="text-yellow-500 text-xl font-bold mb-4 uppercase tracking-wider">Mission Details</h2>
-            
-            {/* Mission Info */}
-            <div className="mb-4 p-4 bg-gray-900/50 border border-yellow-500/20 rounded">
-              <h3 className="text-2xl font-bold mb-2">{selectedMission.name}</h3>
-              <div className="flex gap-4 text-sm mb-3">
-                <span className="text-gray-400">Difficulty: <span className={
-                  selectedMission.difficulty === 'Easy' ? 'text-green-400' :
-                  selectedMission.difficulty === 'Medium' ? 'text-yellow-400' :
-                  'text-red-400'
-                }>{selectedMission.difficulty}</span></span>
-                <span className="text-gray-400">Reward: <span className="text-green-400 font-bold">{selectedMission.reward}</span></span>
-              </div>
-              <p className="text-gray-300 text-sm mb-4">
-                {selectedMission.name === 'Street Race' && 'Race through downtown. First place wins the cash. Watch out for cops.'}
-                {selectedMission.name === 'Drug Deal' && 'Meet the contact at the docks. Deliver the package without getting caught.'}
-                {selectedMission.name === 'Car Theft' && 'Steal the luxury car from the parking garage. Deliver it to the chop shop.'}
-              </p>
-              <button className="px-6 py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded uppercase tracking-wider transition-colors">
-                Start Mission
-              </button>
-            </div>
+    const gameLoop = setInterval(() => {
+      setPlayer(prev => {
+        let newRotation = prev.rotation;
+        let newSpeed = prev.speed;
 
-            {/* Mini Map */}
-            <div className="flex-1 bg-gray-900/80 border border-yellow-500/20 rounded relative overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center">
-                {/* Simple city grid map */}
-                <div className="w-full h-full p-4">
-                  <div className="w-full h-full border-2 border-yellow-500/30 rounded relative">
-                    {/* Streets */}
-                    <div className="absolute top-1/3 left-0 right-0 h-1 bg-gray-600" />
-                    <div className="absolute top-2/3 left-0 right-0 h-1 bg-gray-600" />
-                    <div className="absolute left-1/3 top-0 bottom-0 w-1 bg-gray-600" />
-                    <div className="absolute left-2/3 top-0 bottom-0 w-1 bg-gray-600" />
-                    
-                    {/* Mission marker */}
-                    <div className="absolute top-1/4 left-1/2 w-4 h-4 bg-yellow-500 rounded-full animate-pulse" />
-                    
-                    {/* Player marker */}
-                    <div className="absolute bottom-1/4 right-1/3 w-4 h-4 bg-blue-500 rounded-full" />
-                    
-                    <div className="absolute bottom-2 right-2 text-xs text-gray-500">
-                      🟡 Mission | 🔵 You
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        // Rotation
+        if (keys['a'] || keys['arrowleft']) newRotation -= 5;
+        if (keys['d'] || keys['arrowright']) newRotation += 5;
+
+        // Speed
+        if (keys['w'] || keys['arrowup']) {
+          newSpeed = Math.min(newSpeed + 0.5, 8);
+        } else if (keys['s'] || keys['arrowdown']) {
+          newSpeed = Math.max(newSpeed - 0.5, -4);
+        } else {
+          newSpeed *= 0.95; // Friction
+        }
+
+        // Movement
+        const rad = (newRotation * Math.PI) / 180;
+        let newX = prev.x + Math.sin(rad) * newSpeed;
+        let newY = prev.y - Math.cos(rad) * newSpeed;
+
+        // Boundaries
+        newX = Math.max(20, Math.min(780, newX));
+        newY = Math.max(20, Math.min(580, newY));
+
+        return { x: newX, y: newY, rotation: newRotation, speed: newSpeed };
+      });
+
+      // Check mission proximity
+      missions.forEach(mission => {
+        const dist = Math.sqrt(
+          Math.pow(player.x - mission.x, 2) + Math.pow(player.y - mission.y, 2)
+        );
+        if (dist < 40 && activeMission === null) {
+          setActiveMission(mission.id);
+        }
+      });
+    }, 1000 / 60);
+
+    return () => clearInterval(gameLoop);
+  }, [gameStarted, keys, player.x, player.y, missions, activeMission]);
+
+  const completeMission = useCallback(() => {
+    if (activeMission) {
+      const mission = missions.find(m => m.id === activeMission);
+      if (mission) {
+        setCash(prev => prev + mission.reward);
+        setActiveMission(null);
+      }
+    }
+  }, [activeMission, missions]);
+
+  if (!gameStarted) {
+    return (
+      <div className="h-[100dvh] w-full bg-black flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-6xl font-bold text-yellow-500 mb-4 uppercase tracking-wider">
+            Street Kings
+          </h1>
+          <p className="text-gray-400 mb-8">Use WASD or Arrow Keys to drive</p>
+          <button
+            onClick={() => setGameStarted(true)}
+            className="px-8 py-4 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xl rounded uppercase tracking-wider transition-colors"
+          >
+            Start Game
+          </button>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-gray-800">
+      {/* HUD */}
+      <div className="absolute top-4 left-4 z-20 space-y-2">
+        <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 px-4 py-2 rounded">
+          <div className="text-yellow-500 text-xs uppercase">Cash</div>
+          <div className="text-2xl font-bold text-green-400">${cash.toLocaleString()}</div>
+        </div>
+        <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 px-4 py-2 rounded">
+          <div className="text-yellow-500 text-xs uppercase">Health</div>
+          <div className="w-32 h-3 bg-gray-700 rounded overflow-hidden">
+            <div className="h-full bg-red-500" style={{ width: `${health}%` }} />
+          </div>
+        </div>
+        {wanted > 0 && (
+          <div className="bg-black/80 backdrop-blur-sm border border-red-500/50 px-4 py-2 rounded">
+            <div className="text-red-500 font-bold">{'★'.repeat(wanted)} WANTED</div>
+          </div>
+        )}
+      </div>
+
+      {/* Controls hint */}
+      <div className="absolute top-4 right-4 z-20 bg-black/80 backdrop-blur-sm border border-yellow-500/30 px-4 py-2 rounded text-sm">
+        <div className="text-yellow-500 uppercase text-xs mb-1">Controls</div>
+        <div className="text-gray-300">WASD / Arrows - Drive</div>
+        <div className="text-gray-300">E - Complete Mission</div>
+      </div>
+
+      {/* Mission notification */}
+      {activeMission && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 bg-black/90 backdrop-blur-sm border-2 border-yellow-500 px-8 py-6 rounded text-center">
+          <div className="text-yellow-500 text-2xl font-bold mb-2">
+            {missions.find(m => m.id === activeMission)?.name}
+          </div>
+          <div className="text-green-400 text-xl mb-4">
+            Reward: ${missions.find(m => m.id === activeMission)?.reward.toLocaleString()}
+          </div>
+          <button
+            onClick={completeMission}
+            className="px-6 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded uppercase tracking-wider transition-colors"
+          >
+            Press E to Complete
+          </button>
+        </div>
+      )}
+
+      {/* Game world */}
+      <div className="relative w-full h-full bg-gradient-to-br from-gray-700 via-gray-600 to-gray-700">
+        {/* City grid */}
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.3) 2px, transparent 2px), linear-gradient(90deg, rgba(0,0,0,0.3) 2px, transparent 2px)',
+          backgroundSize: '100px 100px'
+        }} />
+
+        {/* Buildings */}
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute bg-gray-800 border-2 border-gray-900"
+            style={{
+              left: `${(i % 5) * 160 + 50}px`,
+              top: `${Math.floor(i / 5) * 180 + 50}px`,
+              width: '80px',
+              height: '100px',
+            }}
+          />
+        ))}
+
+        {/* Mission markers */}
+        {missions.map(mission => (
+          <div
+            key={mission.id}
+            className="absolute"
+            style={{
+              left: `${mission.x - 20}px`,
+              top: `${mission.y - 40}px`,
+            }}
+          >
+            <div className="text-4xl animate-bounce">📍</div>
+            <div className="text-xs text-yellow-500 font-bold text-center whitespace-nowrap">
+              {mission.name}
+            </div>
+          </div>
+        ))}
+
+        {/* Player car */}
+        <div
+          className="absolute transition-transform"
+          style={{
+            left: `${player.x - 15}px`,
+            top: `${player.y - 20}px`,
+            transform: `rotate(${player.rotation}deg)`,
+          }}
+        >
+          <div className="text-4xl">🚗</div>
+        </div>
+      </div>
+
+      {/* Keyboard listener for E key */}
+      {activeMission && (
+        <div
+          className="absolute inset-0 z-40"
+          onKeyDown={(e) => {
+            if (e.key.toLowerCase() === 'e') {
+              completeMission();
+            }
+          }}
+          tabIndex={0}
+        />
+      )}
     </div>
   );
 }
+
 
